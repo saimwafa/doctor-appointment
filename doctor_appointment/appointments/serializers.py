@@ -1,26 +1,14 @@
-# appointments/serializers.py
-
 from rest_framework import serializers
-from .models import User, Doctor
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AbstractUser
 from django.contrib.auth import authenticate
-from .models import Review
-
-
-
-
-
-
-
-
+from .models import User, Doctor, Review
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = get_user_model()
-        fields = ['id', 'username', 'email', 'phone', 'nic_number', 'password']
+        fields = ['id', 'username', 'email', 'phone', 'nic_number', 'password', 'location']  # Include location
 
     def create(self, validated_data):
         user = get_user_model().objects.create_user(
@@ -28,7 +16,8 @@ class UserSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             phone=validated_data['phone'],
             nic_number=validated_data['nic_number'],
-            password=validated_data['password']
+            password=validated_data['password'],
+            location=validated_data.get('location')  # Use .get() for optional fields
         )
         return user
 
@@ -37,19 +26,19 @@ class UserSerializer(serializers.ModelSerializer):
         instance.email = validated_data.get('email', instance.email)
         instance.phone = validated_data.get('phone', instance.phone)
         instance.nic_number = validated_data.get('nic_number', instance.nic_number)
+        instance.location = validated_data.get('location', instance.location)  # Update location if provided
         password = validated_data.get('password', None)
         if password:
             instance.set_password(password)
         instance.save()
         return instance
 
-
 class DoctorSerializer(serializers.ModelSerializer):
     user = UserSerializer()
 
     class Meta:
         model = Doctor
-        fields = ['id', 'user', 'email', 'phone', 'name', 'speciality', 'nic_number']
+        fields = ['id', 'user', 'email', 'phone', 'name', 'speciality', 'nic_number', 'location']  # Include location
 
     def create(self, validated_data):
         user_data = validated_data.pop('user')
@@ -58,6 +47,22 @@ class DoctorSerializer(serializers.ModelSerializer):
         user.save()
         doctor = Doctor.objects.create(user=user, **validated_data)
         return doctor
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            user_serializer = UserSerializer(instance.user, data=user_data, partial=True)
+            if user_serializer.is_valid():
+                user_serializer.save()
+        
+        instance.email = validated_data.get('email', instance.email)
+        instance.phone = validated_data.get('phone', instance.phone)
+        instance.name = validated_data.get('name', instance.name)
+        instance.speciality = validated_data.get('speciality', instance.speciality)
+        instance.nic_number = validated_data.get('nic_number', instance.nic_number)
+        instance.location = validated_data.get('location', instance.location)  # Update location if provided
+        instance.save()
+        return instance
 
 class LoginSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=[('doctor', 'Doctor'), ('user', 'User')])

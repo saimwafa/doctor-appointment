@@ -13,16 +13,32 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             self.permission_classes = [permissions.IsAuthenticated]
-        elif self.action in ['create']:
+        elif self.action == 'create':
             self.permission_classes = [permissions.AllowAny]
         else:
             self.permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
         return super().get_permissions()
 
+    def perform_create(self, serializer):
+        # Ensure the location field is handled during user creation
+        serializer.save()
+
+    def perform_update(self, serializer):
+        # Ensure the location field is handled during user update
+        serializer.save()
+
 class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     permission_classes = [permissions.AllowAny]
+
+    def perform_create(self, serializer):
+        # Ensure the location field is handled during doctor creation
+        serializer.save()
+
+    def perform_update(self, serializer):
+        # Ensure the location field is handled during doctor update
+        serializer.save()
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
